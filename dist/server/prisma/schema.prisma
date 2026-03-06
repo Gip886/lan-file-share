@@ -1,0 +1,79 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  username  String   @unique
+  password  String
+  role      String   @default("user") // "admin" or "user"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  accessLogs AccessLog[]
+}
+
+model StoragePath {
+  id        String   @id @default(cuid())
+  path      String   @unique
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  files File[]
+}
+
+model File {
+  id            String   @id @default(cuid())
+  name          String
+  path          String   @unique
+  size          BigInt
+  mimeType      String
+  category      String   @default("other") // video, audio, image, subtitle, document, other
+  duration      Float?
+  width         Int?
+  height        Int?
+  thumbnail     String?
+  storagePathId String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  storagePath   StoragePath  @relation(fields: [storagePathId], references: [id])
+  accessLogs    AccessLog[]
+  transcodeJobs TranscodeJob[]
+}
+
+model AccessLog {
+  id        String   @id @default(cuid())
+  userId    String?  // 可选，支持匿名访问
+  fileId    String
+  ip        String
+  device    String
+  bytesSent BigInt   @default(0)
+  duration  Float    @default(0)
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+  file File  @relation(fields: [fileId], references: [id])
+}
+
+model TranscodeJob {
+  id        String   @id @default(cuid())
+  fileId    String
+  status    String   @default("pending") // "pending", "processing", "completed", "failed"
+  progress  Int      @default(0)
+  outputPath String?
+  error     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  file File @relation(fields: [fileId], references: [id])
+}
